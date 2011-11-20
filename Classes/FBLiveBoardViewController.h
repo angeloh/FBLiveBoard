@@ -42,9 +42,12 @@ typedef enum apiCall {
     AQGridViewDataSource, 
     AQGridViewDelegate, 
     UIGestureRecognizerDelegate,
-    FBRequestDelegate>
+    FBRequestDelegate,
+    FBDialogDelegate,
+    FBSessionDelegate>
 {
     int currentAPICall;
+    int currentPostFriendIdx;
     
     NSMutableArray * _icons;
     NSMutableArray * _chosen_icons;

@@ -94,6 +94,35 @@
                      }];
 }
 
+-(void)showAlert:(NSString *)message
+{
+    UIAlertView *alertView = [[UIAlertView alloc] 
+                              initWithTitle:@"FBLiveBoard" 
+                              message:message 
+                              delegate:self 
+                              cancelButtonTitle:@"OK" 
+                              otherButtonTitles:nil, 
+                              nil];
+    [alertView show];
+    [alertView release];
+}
+
+-(BOOL)isAccessTokenError:(NSError *) error {
+    if ([[error domain] isEqualToString:@"facebookErrDomain"] && [error code] == 10000 ) {
+        NSDictionary *userInfo = [error userInfo];
+        NSDictionary *errorAsDictionary = [userInfo objectForKey:@"error"];
+        if ([[errorAsDictionary objectForKey:@"type"] isEqualToString:@"OAuthException"]) {
+            //Invalid access token
+            return YES;         
+        }
+    }
+    if ([[error domain] isEqualToString:@"facebookErrDomain"] && ([error code] == 110 || [error code] == 190)) {
+        //Error accessing access token
+        return YES;         
+    }
+    return NO;
+}
+
 /*
  * This method hides the message, only needed if view closed
  * and animation still going on.
@@ -135,13 +164,15 @@
 -(void)pokeFriends
 {
     if ([_chosen_icons count] <= 0) {
-        [self showMessage:@"Oops, select one friend to send."];
+        [self showAlert:@"Oops, select one friend to send."];
     } else {
         for (NSUInteger i=0; i<[_chosen_icons count]; i++) {
+            currentPostFriendIdx = i;
             // The object's image
             UIImage *icon = [_chosen_icons objectAtIndex:i];
             NSString *friendID = [_cacheIcon objectForKey:icon];
             [self postFriendsWall:friendID];
+            
         }
     }
 }
@@ -165,6 +196,10 @@
     [self apiGraphFriends];
 }
 
+- (void) logoutButtonClicked {
+    FBLiveBoardAppDelegate *delegate = (FBLiveBoardAppDelegate *) [[UIApplication sharedApplication] delegate]; 
+    [[delegate facebook] logout:self];
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 #pragma mark -
@@ -180,6 +215,12 @@
         									  style:UIBarButtonItemStylePlain
         									 target:self 
         									 action:@selector(pokeFriends)] autorelease];
+        
+        self.navigationItem.leftBarButtonItem = 
+        [[[UIBarButtonItem alloc] initWithTitle:NSLocalizedString(@"Logout", @"Logout")
+                                          style:UIBarButtonItemStylePlain
+                                         target:self 
+                                         action:@selector(logoutButtonClicked)] autorelease];
         
         _cacheIcon = [[NSMutableDictionary alloc] initWithCapacity:1];
     }
@@ -198,29 +239,29 @@
     [self.view addSubview:_activityIndicator];
     
     // Message Label for showing confirmation and status messages
-    CGFloat yLabelViewOffset = self.view.bounds.size.height-self.navigationController.navigationBar.frame.size.height-30;
-    _messageView = [[UIView alloc] 
-                    initWithFrame:CGRectMake(0, yLabelViewOffset, self.view.bounds.size.width, 30)];
-    _messageView.backgroundColor = [UIColor lightGrayColor];
-    
-    UIView *messageInsetView = [[UIView alloc] initWithFrame:CGRectMake(1, 1, self.view.bounds.size.width-1, 28)]; 
-    messageInsetView.backgroundColor = [UIColor colorWithRed:255.0/255.0
-                                                       green:248.0/255.0
-                                                        blue:228.0/255.0 
-                                                       alpha:1];
-    _messageLabel = [[UILabel alloc] 
-                     initWithFrame:CGRectMake(4, 1, self.view.bounds.size.width-10, 26)];
-    _messageLabel.text = @"";
-    _messageLabel.font = [UIFont fontWithName:@"Helvetica" size:14.0];
-    _messageLabel.backgroundColor = [UIColor colorWithRed:255.0/255.0
-                                                    green:248.0/255.0
-                                                     blue:228.0/255.0 
-                                                    alpha:0.6];
-    [messageInsetView addSubview:_messageLabel];
-    [_messageView addSubview:messageInsetView];    
-    [messageInsetView release];
-    _messageView.hidden = YES;
-    [self.view addSubview:_messageView];
+//    CGFloat yLabelViewOffset = self.view.bounds.size.height-self.navigationController.navigationBar.frame.size.height-30;
+//    _messageView = [[UIView alloc] 
+//                    initWithFrame:CGRectMake(0, yLabelViewOffset, self.view.bounds.size.width, 30)];
+//    _messageView.backgroundColor = [UIColor lightGrayColor];
+//    
+//    UIView *messageInsetView = [[UIView alloc] initWithFrame:CGRectMake(1, 1, self.view.bounds.size.width-1, 28)]; 
+//    messageInsetView.backgroundColor = [UIColor colorWithRed:255.0/255.0
+//                                                       green:248.0/255.0
+//                                                        blue:228.0/255.0 
+//                                                       alpha:1];
+//    _messageLabel = [[UILabel alloc] 
+//                     initWithFrame:CGRectMake(4, 1, self.view.bounds.size.width-10, 26)];
+//    _messageLabel.text = @"";
+//    _messageLabel.font = [UIFont fontWithName:@"Helvetica" size:14.0];
+//    _messageLabel.backgroundColor = [UIColor colorWithRed:255.0/255.0
+//                                                    green:248.0/255.0
+//                                                     blue:228.0/255.0 
+//                                                    alpha:0.6];
+//    [messageInsetView addSubview:_messageLabel];
+//    [_messageView addSubview:messageInsetView];    
+//    [messageInsetView release];
+//    _messageView.hidden = YES;
+//    [self.view addSubview:_messageView];
     
     _emptyCellIndex = NSNotFound;
     
@@ -367,7 +408,7 @@
     // Hide the activitiy indicator
     [self hideActivityIndicator];
     // Hide the message.
-    [self hideMessage];
+//    [self hideMessage];
 }
 
 - (void) viewDidUnload
@@ -381,8 +422,8 @@
 - (void) dealloc
 {
     NI_RELEASE_SAFELY(_activityIndicator);
-    NI_RELEASE_SAFELY(_messageView);
-    NI_RELEASE_SAFELY(_messageLabel);
+//    NI_RELEASE_SAFELY(_messageView);
+//    NI_RELEASE_SAFELY(_messageLabel);
     NI_RELEASE_SAFELY(_icons);
     NI_RELEASE_SAFELY(_chosen_icons);
     NI_RELEASE_SAFELY(_gridHeaderView);
@@ -737,7 +778,7 @@
             NSArray *resultData = [result objectForKey:@"data"];
             
             if ([resultData count] > 0) {
-                for (NSUInteger i=0; i<[resultData count] && i < 25; i++) {
+                for (NSUInteger i=0; i<[resultData count] && i < 50; i++) {
                     [friends addObject:[resultData objectAtIndex:i]];
                     // The object's image
                     UIImage *image = [self imageForObject:[[resultData objectAtIndex:i] objectForKey:@"id"]];
@@ -746,10 +787,23 @@
                 }
                 [_gridView reloadData];
             } else {
-                [self showMessage:@"You have no friends."];
+                [self showAlert:@"You have no friends."];
             }
             [friends release];
             break;
+        }
+        case kPostFeedFriend:
+        {
+            if (currentPostFriendIdx == ([_chosen_icons count] - 1)) {
+                NSLog(@"You just poked friends!");
+                [self showAlert:@"You just poked friends!"];
+                for (NSUInteger i=0; i<[_chosen_icons count]; i++) {
+                    [_icons addObject:[_chosen_icons objectAtIndex:i]];
+                }
+                [_chosen_icons removeAllObjects];
+                [_gridHeaderView reloadData];
+                [_gridView reloadData];
+            }
         }
         default:
             break;
@@ -761,10 +815,36 @@
  * successfully.
  */
 - (void)request:(FBRequest *)request didFailWithError:(NSError *)error {
-    [self hideActivityIndicator];
-    NSLog(@"Error message: %@", [[error userInfo] objectForKey:@"error_msg"]);
-    [self showMessage:@"Oops, something went haywire."];
-}
+    NSLog(@"%@", [error localizedDescription]);
+    NSLog(@"Err details: %@", [error description]);
+    if ([self isAccessTokenError:error]) {
+        [self logoutButtonClicked];
+        
+        NSLog(@"Try again to login");
+        
+        FBLiveBoardAppDelegate *delegate = (FBLiveBoardAppDelegate *) [[UIApplication sharedApplication] delegate]; 
+        
+        // check fb token
+        NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+        if ([defaults objectForKey:@"FBAccessTokenKey"] 
+            && [defaults objectForKey:@"FBExpirationDateKey"]) {
+            delegate.facebook.accessToken = [defaults objectForKey:@"FBAccessTokenKey"];
+            delegate.facebook.expirationDate = [defaults objectForKey:@"FBExpirationDateKey"];
+        }
+        
+        if (![delegate.facebook isSessionValid]) {
+            NSArray *permissions = [[NSArray alloc] initWithObjects:
+                                    @"user_likes", 
+                                    @"read_stream",
+                                    @"publish_stream",
+                                    nil];
+            [delegate.facebook authorize:permissions];
+            [permissions release];
+        }
+
+    }
+    
+};
 
 #pragma mark - FBDialogDelegate Methods
 
@@ -777,7 +857,7 @@
         case kDialogFeedFriend:
         case kPostFeedFriend:
         {
-            [self showMessage:@"Published feed successfully."];
+            [self showAlert:@"Published feed successfully."];
             break;
         }
         default:
@@ -790,9 +870,42 @@
 }
 
 - (void)dialog:(FBDialog*)dialog didFailWithError:(NSError *)error {
-    NSLog(@"Error message: %@", [[error userInfo] objectForKey:@"error_msg"]);
-    [self showMessage:@"Oops, something went haywire."];
+    NSLog(@"%@", [error localizedDescription]);
+    NSLog(@"Err details: %@", [error description]);
+    if ([self isAccessTokenError:error]) {
+        [self logoutButtonClicked];
+    }
 }
 
+#pragma mark - FBSessionDelegate Methods
 
+- (void)fbDidLogin {
+    [self.navigationItem.leftBarButtonItem setEnabled:YES];
+    
+    FBLiveBoardAppDelegate *delegate = (FBLiveBoardAppDelegate *) [[UIApplication sharedApplication] delegate];
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    [defaults setObject:[delegate.facebook accessToken] forKey:@"FBAccessTokenKey"];
+    [defaults setObject:[delegate.facebook expirationDate] forKey:@"FBExpirationDateKey"];
+    [defaults synchronize];
+    
+    [self getUserFriends];
+    [_gridHeaderView reloadData];
+    [_gridView reloadData];
+}
+
+- (void) fbDidLogout {
+    [self.navigationItem.leftBarButtonItem setEnabled:NO];
+    
+    // Remove saved authorization information if it exists
+    NSUserDefaults *defaults = [NSUserDefaults standardUserDefaults];
+    if ([defaults objectForKey:@"FBAccessTokenKey"]) {
+        [defaults removeObjectForKey:@"FBAccessTokenKey"];
+        [defaults removeObjectForKey:@"FBExpirationDateKey"];
+        [defaults synchronize];
+    }
+    [_icons removeAllObjects];
+    [_chosen_icons removeAllObjects];
+    [_gridHeaderView reloadData];
+    [_gridView reloadData];
+}
 @end
